@@ -1,0 +1,5 @@
+Entre chaves e variáveis, O código começa a fluir. Lógicas antes impensáveis, Fazem o sistema agir.
+
+Se o print surgir na tela, E o erro não aparecer, A execução se revela, Fazendo o script viver.
+
+Do Hello World ao infinito, Byte a byte a viajar. Se você ler o que foi escrito, O teste acabou de passar.
