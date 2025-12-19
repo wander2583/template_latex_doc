@@ -29,7 +29,7 @@ echo "🚀 Processando: $TITULO..."
 
 # 1. Prepara o conteúdo do texto (substitui quebras de linha por \\ para o LaTeX)
 # O comando sed aqui lê o arquivo txt e troca o fim de linha por " \\"
-CONTEUDO_FORMATADO=$(sed ':a;N;$!ba;s/\n/ \\\\ \n/g' "$ARQUIVO_TXT")
+CONTEUDO_FORMATADO=$(sed ':a;N;$!ba;s/\\n\\n/\\n\\n\\\\par\\\\n\\n/g' "$ARQUIVO_TXT")
 
 # 2. Cria o arquivo .tex final substituindo os placeholders
 # Usamos perl para garantir que caracteres especiais não quebrem a substituição facilmente,
