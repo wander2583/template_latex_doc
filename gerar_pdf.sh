@@ -1,69 +1,121 @@
 #!/usr/bin/env bash
+# =========================================================================
+# Script para Geração de PDFs com o Template da ABARCLE
+# Autor: Gemini
+# Versão: 2.0
+# Data: 20/12/2025
+# =========================================================================
 
-# Uso: ./gerar_pdf.sh "Titulo do Poema" "Nome do Autor" arquivo_texto.txt
+set -e # Encerra o script se um comando falhar
 
-TITULO="$1"
-AUTOR="$2"
-ARQUIVO_TXT="$3"
+# --- VARIÁVEIS E ARGUMENTOS ---
+TITULO="${1}"
+AUTOR="${2}"
+ARQUIVO_TXT="${3}"
+TIPO_CONTEUDO="${4:-prosa}" # 'prosa' (padrão) ou 'poema'
+
 TEMPLATE="template.tex"
 BUILD_DIR="build"
 
-# Verificações básicas
-if [ -z "$ARQUIVO_TXT" ]; then
-  echo "❌ Uso correto: ./gerar_pdf.sh \"Titulo\" \"Autor\" arquivo.txt"
+# --- FUNÇÕES ---
+function mostrar_uso() {
+  echo "Uso: $0 \"Título\" \"Autor\" arquivo.txt [tipo]"
+  echo "  [tipo] é opcional: 'prosa' (padrão) ou 'poema'."
+  exit 1
+}
+
+function limpar_nome() {
+  echo "$1" | iconv -t ascii//TRANSLIT | sed -r 's/[^a-zA-Z0-9]+/_/g' | tr '[:upper:]' '[:lower:]'
+}
+
+# --- VALIDAÇÕES ---
+if [ -z "$TITULO" ] || [ -z "$AUTOR" ] || [ -z "$ARQUIVO_TXT" ]; then
+  echo "❌ Erro: Argumentos faltando."
+  mostrar_uso
+fi
+
+if [ ! -f "$ARQUIVO_TXT" ]; then
+  echo "❌ Erro: O arquivo de texto '$ARQUIVO_TXT' não foi encontrado."
   exit 1
 fi
 
 if [ ! -f "$TEMPLATE" ]; then
-  echo "❌ Erro: Arquivo '$TEMPLATE' não encontrado."
+  echo "❌ Erro: O arquivo de template '$TEMPLATE' não foi encontrado."
   exit 1
 fi
 
-# Cria diretório de build para não sujar a pasta principal
-mkdir -p $BUILD_DIR
+# --- PREPARAÇÃO ---
+NOME_SAIDA=$(limpar_nome "$TITULO")
+ARQUIVO_TEX_BUILD="$BUILD_DIR/$NOME_SAIDA.tex"
 
-# Nome do arquivo de saída (baseado no título, sem espaços)
-NOME_SAIDA=$(echo "$TITULO" | iconv -t ascii//TRANSLIT | sed -r 's/[^a-zA-Z0-9]+/_/g' | tr '[:upper:]' '[:lower:]')
+mkdir -p "$BUILD_DIR"
+echo "🚀 Processando '$TITULO' como um(a) '$TIPO_CONTEUDO'."
 
-echo "🚀 Processando: $TITULO..."
+# --- PROCESSAMENTO DO CONTEÚDO ---
+# Lê o conteúdo bruto do arquivo de texto
+CONTEUDO_BRUTO=$(cat "$ARQUIVO_TXT")
 
-# 1. Prepara o conteúdo do texto (substitui quebras de linha por \\ para o LaTeX)
-# O comando sed aqui lê o arquivo txt e troca o fim de linha por " \\"
-CONTEUDO_FORMATADO=$(sed ':a;N;$!ba;s/\\n\\n/\\n\\n\\\\par\\\\n\\n/g' "$ARQUIVO_TXT")
+# Formata o conteúdo com base no tipo
+case "$TIPO_CONTEUDO" in
+  "poema")
+    # Para o ambiente 'verse', cada linha no arquivo de texto deve terminar com '\' no LaTeX.
+    # O 'sed' abaixo adiciona '\' ao final de cada linha.
+    CONTEUDO_FORMATADO=$(echo "$CONTEUDO_BRUTO" | sed 's/$/ \\/')
+    # Envolve o conteúdo formatado no ambiente 'poema'
+    CONTEUDO_FINAL="\begin{poema}
+${CONTEUDO_FORMATADO}
+\end{poema}"
+    ;;
+  "prosa"|*)
+    # Para prosa, apenas envolvemos o conteúdo no ambiente. O LaTeX cuida do resto.
+    # A primeira letra pode ser transformada em capitular com \lettrine
+    # O comando abaixo tenta fazer isso de forma automática.
+    PRIMEIRA_LETRA=$(echo "$CONTEUDO_BRUTO" | cut -c1)
+    RESTO_TEXTO=$(echo "$CONTEUDO_BRUTO" | cut -c2-)
+    CONTEUDO_COM_CAPITULAR="\lettrine{${PRIMEIRA_LETRA}}}{}${RESTO_TEXTO}"
+    CONTEUDO_FINAL="\begin{prosa}
+${CONTEUDO_COM_CAPITULAR}
+\end{prosa}"
+    ;;
+esac
 
-# 2. Cria o arquivo .tex final substituindo os placeholders
-# Usamos perl para garantir que caracteres especiais não quebrem a substituição facilmente,
-# mas aqui um sed robusto resolve para textos simples.
-cp "$TEMPLATE" "$BUILD_DIR/$NOME_SAIDA.tex"
+# --- MONTAGEM DO ARQUIVO .TEX ---
+# Para evitar erros com caracteres especiais (como / & \), usaremos um método mais seguro
+# para substituir o conteúdo, em vez de `sed` direto na linha de comando.
+# Criamos um arquivo temporário com o conteúdo final e usamos `sed` para ler dele.
+TEMP_CONTEUDO_FILE=$(mktemp)
+echo "$CONTEUDO_FINAL" > "$TEMP_CONTEUDO_FILE"
 
-# Substituição via sed (usando | como delimitador para evitar conflito com barras)
-sed -i "s|VAR_TITULO|$TITULO|g" "$BUILD_DIR/$NOME_SAIDA.tex"
-sed -i "s|VAR_AUTOR|$AUTOR|g" "$BUILD_DIR/$NOME_SAIDA.tex"
+# Substitui os placeholders no template
+sed "s/VAR_TITULO/${TITULO}/g" "$TEMPLATE" | \
+sed "s/VAR_AUTOR/${AUTOR}/g" | \
+sed '/VAR_CONTEUDO/ {
+  r '"$TEMP_CONTEUDO_FILE"'
+  d
+}' > "$ARQUIVO_TEX_BUILD"
 
-# A injeção do conteúdo é mais delicada devido às quebras de linha.
-# Vamos ler o template até a linha do CONTEUDO, inserir o texto, e ler o resto.
-# (Método simplificado: usar um placeholder único que o sed substitui pelo arquivo pré-formatado)
-# Nota: Para scripts complexos, Python seria melhor, mas vamos de Bash puro:
-ESCAPED_CONTENT=$(echo "$CONTEUDO_FORMATADO" | sed 's/\\/\\\\/g' | sed 's/&/\\&/g')
-# O comando acima é um escape básico. Se o poema tiver muitos símbolos, avise.
+rm "$TEMP_CONTEUDO_FILE"
 
-# Vamos usar awk para inserir o conteúdo de forma segura no lugar de VAR_CONTEUDO
-awk -v r="$CONTEUDO_FORMATADO" '{gsub(/VAR_CONTEUDO/,r)}1' "$TEMPLATE" >"$BUILD_DIR/$NOME_SAIDA.tex"
-# Re-aplicar título e autor no arquivo gerado pelo awk
-sed -i "s|VAR_TITULO|$TITULO|g" "$BUILD_DIR/$NOME_SAIDA.tex"
-sed -i "s|VAR_AUTOR|$AUTOR|g" "$BUILD_DIR/$NOME_SAIDA.tex"
+echo "⚙️  Arquivo '$ARQUIVO_TEX_BUILD' criado. Compilando para PDF..."
 
-# 3. Compilação
-echo "⚙️  Compilando PDF..."
-cd $BUILD_DIR
-pdflatex -interaction=batchmode "$NOME_SAIDA.tex" >/dev/null
+# --- COMPILAÇÃO DO PDF ---
+cd "$BUILD_DIR"
+# Usamos lualatex ou xelatex se disponíveis, pdflatex como fallback.
+# Para este template, pdflatex é suficiente.
+pdflatex -interaction=batchmode "$NOME_SAIDA.tex" > /dev/null
 
-# Verifica se deu certo
-if [ -f "$NOME_SAIDA.pdf" ]; then
-  mv "$NOME_SAIDA.pdf" ../
-  echo "✅ Sucesso! Arquivo gerado: $NOME_SAIDA.pdf"
-  cd ..
-  # Opcional: rm -rf $BUILD_DIR (se quiser limpar os temporários)
+# Segunda passagem para garantir referências (se houver)
+pdflatex -interaction=batchmode "$NOME_SAIDA.tex" > /dev/null
+cd ..
+
+# --- FINALIZAÇÃO ---
+if [ -f "$BUILD_DIR/$NOME_SAIDA.pdf" ]; then
+  mv "$BUILD_DIR/$NOME_SAIDA.pdf" "./$NOME_SAIDA.pdf"
+  echo "✅ Sucesso! PDF gerado: '$NOME_SAIDA.pdf'"
 else
-  echo "❌ Erro na compilação. Verifique o arquivo $BUILD_DIR/$NOME_SAIDA.log"
+  echo "❌ Erro na compilação do LaTeX."
+  echo "   Verifique o log para mais detalhes: '$BUILD_DIR/$NOME_SAIDA.log'"
+  exit 1
 fi
+
+echo "✨ Processo concluído."

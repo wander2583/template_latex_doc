@@ -1,58 +1,165 @@
+% =========================================================================
+% Template Profissional para Academia Barcarenense de Letras (ABARCLE)
+% Autor: Gemini
+% Versão: 2.0
+% Data: 20/12/2025
+% =========================================================================
+
 \documentclass[a4paper,12pt]{article}
+
+% --- PACOTES ESSENCIAIS ---
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[brazil]{babel}
-\usepackage{graphicx}
 \usepackage{geometry}
-\usepackage{fancyhdr}
+\usepackage{graphicx}
 \usepackage{xcolor}
-\usepackage{times}
-\usepackage{setspace}
 \usepackage{hyperref}
+\usepackage{lipsum} % Para texto de exemplo, pode ser removido
 
-% --- Configuração Visual ---
-\renewcommand{\familydefault}{\sfdefault}
-\geometry{a4paper, top=3cm, bottom=2cm, left=2cm, right=2cm, headheight=4.5cm}
-\definecolor{barcarenaOrange}{RGB}{210, 105, 30}
-\definecolor{laranjaTitulo}{HTML}{E77014}
+% --- PACOTES DE ESTILO E FORMATAÇÃO ---
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usetikzlibrary{calc}
+\usepackage{lettrine} % Para letras capitulares
+\usepackage{verse}    % Para formatação de poemas
+\usepackage{setspace} % Para controle do espaçamento entre linhas
 
-% --- Header/Footer ---
+% --- CONFIGURAÇÕES DE PÁGINA ---
+\geometry{a4paper, top=3cm, bottom=2.5cm, left=2cm, right=2cm, headheight=5cm}
+
+% --- CORES PERSONALIZADAS ---
+\definecolor{AbarcleOrange}{HTML}{E77014} % Laranja vibrante da identidade
+
+% --- FONTES (Exemplo com fontes padrão do LaTeX para maior portabilidade) ---
+\renewcommand{\familydefault}{\sfdefault} % Usa uma fonte sem serifa como padrão
+
+% --- COMANDOS PARA METADADOS ---
+% Usamos \gdef para tornar os comandos globais, útil em setups complexos.
+\makeatletter
+\def\titulo#1{\gdef\@titulo{#1}}
+\def\autor#1{\gdef\@autor{#1}}
+\def\printmeta{
+    \begin{center}
+        {\Huge\bfseries\@titulo\par}
+        \vspace{0.5cm}
+        {\Large\itshape\@autor\par}
+    \end{center}
+    \vspace{1cm}
+}
+\makeatother
+
+% --- CONFIGURAÇÃO DO CABEÇALHO E RODAPÉ COM FANCYHDR E TIKZ ---
 \pagestyle{fancy}
-\fancyhf{}
+\fancyhf{} % Limpa todos os campos
 \renewcommand{\headrulewidth}{0pt}
 \renewcommand{\footrulewidth}{0pt}
 
-\fancyhead[C]{%
-    \includegraphics[width=2.5cm]{./img/logo.jpg} \\ 
-    \vspace{0.2cm}
-    \textbf{\large ACADEMIA BARCARENENSE DE LETRAS} \\
-    LEI MUNICIPAL Nº 2260/2021 \\
-    BARCARENA -- PA \\ 
-    \noindent\textcolor{laranjaTitulo}{\rule{\textwidth}{3pt}}
+% Cabeçalho
+\fancyhead[C]{
+\begin{tikzpicture}[remember picture, overlay]
+    % Acessa o nó da página atual
+    \node[anchor=north, yshift=0cm] at (current page.north) {
+        \begin{tikzpicture}[remember picture, overlay]
+            % Logo e Texto do Cabeçalho
+            \node[anchor=north] at (current page.north) [yshift=-2cm] {
+                \centering
+                \includegraphics[width=2.5cm]{img/logo.jpg}\\[0.3cm]
+                \textbf{\large ACADEMIA BARCARENENSE DE LETRAS} \\
+                \small LEI MUNICIPAL Nº 2260/2021 \\
+                \small BARCARENA -- PA
+            };
+            % Linha Laranja Superior
+            \draw[AbarcleOrange, line width=3pt] 
+                ($(current page.north west)+(0, -4.5cm)$) -- 
+                ($(current page.north east)+(0, -4.5cm)$);
+        \end{tikzpicture}
+    };
+\end{tikzpicture}
 }
 
-\fancyfoot[C]{%
-    \noindent\textcolor{laranjaTitulo}{\rule{\textwidth}{3pt}} \\
-    \small
-    \textcolor{black}{Travessa 7 DE SETEMBRO, Bairro Comercial - BARCARENA-PA - CEP 667400-12} \\
-    \href{https://instagram.com/abarcle_oficial}{\texttt{https://instagram.com/abarcle\_oficial}} \\
-    \vspace{0.1cm}
-    % \textcolor{barcarenaOrange}{\rule{\textwidth}{3pt}}
+% Rodapé
+\fancyfoot[C]{
+\begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=south, yshift=0cm] at (current page.south) {
+        \begin{tikzpicture}[remember picture, overlay]
+            % Linha Laranja Inferior
+            \draw[AbarcleOrange, line width=3pt] 
+                ($(current page.south west)+(0, 1.5cm)$) -- 
+                ($(current page.south east)+(0, 1.5cm)$);
+            
+            % Texto do Rodapé
+            \node[anchor=south, text width=\textwidth, align=center] at (current page.south) [yshift=0.5cm] {
+                \tiny
+                Travessa 7 DE SETEMBRO, Bairro Comercial - BARCARENA-PA - CEP 66740-012 \\
+                \href{https://instagram.com/abarcle_oficial}{\texttt{https://instagram.com/abarcle\_oficial}}
+            };
+        \end{tikzpicture}
+    };
+\end{tikzpicture}
 }
+% --- FIM CABEÇALHO E RODAPÉ ---
 
-\title{VAR_TITULO}
-\author{VAR_AUTOR}
+% --- NOVOS AMBIENTES PARA CONTEÚDO ---
+
+% Ambiente para TEXTO NORMAL (PROSA)
+\newenvironment{prosa}
+  {\begin{onehalfspace}\sffamily}
+  {\end{onehalfspace}}
+
+% Ambiente para POEMA
+% \poemtitle{} para o título do poema (se houver)
+% \poet{} para o poeta (se for diferente do autor principal)
+% \stanza para estrofes
+% \verseline para linhas do verso
+\newenvironment{poema}
+  {\begin{center}\begin{verse*}}
+  {\end{verse*}\end{center}}
+
+
+% =========================================================================
+% --- DOCUMENTO PRINCIPAL ---
+% =========================================================================
+
+% --- Defina o título e o autor aqui ---
+\titulo{VAR_TITULO}
+\autor{VAR_AUTOR}
 
 \begin{document}
 
-% \maketitle
+% Imprime o título e autor definidos acima
+\printmeta
 
-\begin{center}
+% --- Início do Conteúdo Variável ---
+% Use os ambientes 'prosa' ou 'poema' para adicionar seu texto.
 
-	\begin{onehalfspace}
-		VAR_CONTEUDO % Placeholder do Conteúdo
-	\end{onehalfspace}
+VAR_CONTEUDO
 
-\end{center}
+% Exemplo de como usar os ambientes:
+% 
+% \begin{prosa}
+% \lettrine{P}{rimeiro} parágrafo do texto em prosa. \lipsum[1]
+% 
+% Segundo parágrafo do texto em prosa. \lipsum[2]
+% \end{prosa}
+% 
+% \begin{poema}
+% \poemtitle{Soneto de Fidelidade}
+% \poet{Vinicius de Moraes}
+% 
+% \stanza
+% De tudo, ao meu amor serei atento \\
+% Antes, e com tal zelo, e sempre, e tanto \\
+% Que mesmo em face do maior encanto \\
+% Dele se encante mais meu pensamento.
+% 
+% \stanza
+% Quero vivê-lo em cada vão momento \\
+% E em seu louvor hei de espalhar meu canto \\
+% E rir meu riso e derramar meu pranto \\
+% Ao seu pesar ou seu contentamento.
+% \end{poema}
+
+% --- Fim do Conteúdo Variável ---
 
 \end{document}
